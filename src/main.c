@@ -36,5 +36,10 @@ int
 main(void)
 {
 
+	while (1) {
+		printf("hello\n");
+		mdx_usleep(100000);
+	}
+
 	return (0);
 }

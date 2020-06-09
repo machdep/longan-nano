@@ -30,18 +30,20 @@
 #include <sys/thread.h>
 #include <sys/malloc.h>
 
+#include <machine/cpufunc.h>
+
 #include <dev/gpio/gpio.h>
 #include <dev/uart/uart.h>
+#include <dev/intc/intc.h>
 
+#include <arch/riscv/include/clic.h>
 #include <arch/riscv/gigadevice/gd32v.h>
 
 static struct mdx_device rcu;
 static struct mdx_device gpioa;
 static struct mdx_device usart;
-
-#if 0
-static struct clint_softc clint_sc;
-#endif
+static struct mdx_device timer0;
+static struct mdx_device clic;
 
 void
 board_init(void)
@@ -51,12 +53,10 @@ board_init(void)
 	mdx_fl_init();
 	mdx_fl_add_region(0x20004000, 0x4000);
 
-#if 0
-	e300g_clint_init(&clint_sc, CLINT_BASE, BOARD_OSC_FREQ);
-#endif
-
 	gd32v_rcu_init(&rcu, BASE_RCU);
-	gd32v_rcc_setup(&rcu, 0, 0, APB2EN_USART0 | APB2EN_PAEN);
+	gd32v_rcc_setup(&rcu, 0,
+	    APB1EN_TIMER1EN,
+	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN);
 
 	gd32v_gpio_init(&gpioa, BASE_GPIOA);
 	gd32v_usart_init(&usart, BASE_USART0, 8000000);
@@ -70,6 +70,12 @@ board_init(void)
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
-	printf("mdepx initialized\n");
+	clic_init(&clic, BASE_ECLIC);
 
+	gd32v_timer_init(&timer0, BASE_TIMER0, 8000000);
+
+	mdx_intc_setup(&clic, 46, gd32v_timer_intr, &timer0);
+	mdx_intc_enable(&clic, 46);
+
+	printf("mdepx initialized\n");
 }

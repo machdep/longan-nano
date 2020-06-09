@@ -29,6 +29,13 @@
 ASM_ENTRY(__start)
 	la	sp, idle_thread_stack + MDX_THREAD_STACK_SIZE
 	la	t0, cpu_exception_handler
+
+	/*
+	 * Use ECLIC. See
+	 * Bumblebee Processor Core
+	 * Instruction Set Architecture Manual
+	 */
+	or	t0, t0, 3
 	csrw	mtvec, t0
 
 	/* Clear BSS. */
