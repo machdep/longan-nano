@@ -41,24 +41,29 @@
 
 static struct mdx_device rcu;
 static struct mdx_device gpioa;
+static struct mdx_device gpiob;
 static struct mdx_device usart;
 static struct mdx_device timer0;
 static struct mdx_device clic;
+struct mdx_device i2c0;
 
 void
 board_init(void)
 {
+	uint32_t reg;
 
 	/* Add some memory so OF could allocate devices and their softc. */
 	mdx_fl_init();
 	mdx_fl_add_region(0x20004000, 0x4000);
 
 	gd32v_rcu_init(&rcu, BASE_RCU);
-	gd32v_rcc_setup(&rcu, 0,
-	    APB1EN_TIMER1EN,
-	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN);
+	gd32v_rcu_setup(&rcu, 0,
+	    APB1EN_TIMER1EN | APB1EN_I2C0EN,
+	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN | APB2EN_PBEN);
 
 	gd32v_gpio_init(&gpioa, BASE_GPIOA);
+	gd32v_gpio_init(&gpiob, BASE_GPIOB);
+
 	gd32v_usart_init(&usart, BASE_USART0, 8000000);
 
 	mdx_uart_setup(&usart, 115200, UART_DATABITS_8,
@@ -66,13 +71,37 @@ board_init(void)
 
 	mdx_console_register_uart(&usart);
 
+	gd32v_timer_init(&timer0, BASE_TIMER0, 8000000);
+	gd32v_i2c_init(&i2c0, BASE_I2C0);
+
 	mdx_gpio_configure(&gpioa, 0, 9,
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
-	clic_init(&clic, BASE_ECLIC);
+	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_MEDIUM | MDX_GPIO_PUSH_PULL;
+	mdx_gpio_configure(&gpioa, 0, 12, reg); //wak
+	mdx_gpio_configure(&gpioa, 0, 11, reg); //int
+	mdx_gpio_configure(&gpioa, 0, 8, reg); //rst
+	mdx_gpio_configure(&gpiob, 0, 15, reg); //add
 
-	gd32v_timer_init(&timer0, BASE_TIMER0, 8000000);
+	mdx_gpio_set(&gpioa, 0, 12, 0);
+	mdx_gpio_set(&gpioa, 0, 11, 0);
+	mdx_gpio_set(&gpioa, 0, 8, 0);
+	mdx_gpio_set(&gpiob, 0, 15, 0);
+
+#if 0
+	mdx_gpio_configure(&gpiob, 0, 6,
+	    MDX_GPIO_ALT_FUNC | MDX_GPIO_INPUT | MDX_GPIO_PULL_UP);
+	mdx_gpio_configure(&gpiob, 0, 7,
+	    MDX_GPIO_ALT_FUNC | MDX_GPIO_INPUT | MDX_GPIO_PULL_UP);
+#endif
+
+	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_HIGH;
+	reg |= MDX_GPIO_OPEN_DRAIN | MDX_GPIO_ALT_FUNC;
+	mdx_gpio_configure(&gpiob, 0, 6, reg);
+	mdx_gpio_configure(&gpiob, 0, 7, reg);
+
+	clic_init(&clic, BASE_ECLIC);
 
 	mdx_intc_setup(&clic, 46, gd32v_timer_intr, &timer0);
 	mdx_intc_enable(&clic, 46);

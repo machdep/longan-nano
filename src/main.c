@@ -32,13 +32,93 @@
 #include <sys/thread.h>
 #include <sys/mbuf.h>
 
+#include <dev/i2c/i2c.h>
+#include <dev/ccs811/ccs811.h>
+
+extern struct mdx_device i2c0;
+
+static uint8_t
+ccs811_read(uint8_t reg, uint8_t *buf, int len)
+{
+	struct i2c_msg msgs[2];
+	uint8_t i2c_addr;
+	int error;
+
+	i2c_addr = 0x5a;
+
+	/* Write register */
+	msgs[0].slave = i2c_addr;
+	msgs[0].buf = &reg;
+	msgs[0].len = 1;
+	msgs[0].flags = 0;
+
+	/* Read data */
+	msgs[1].slave = i2c_addr;
+	msgs[1].buf = buf;
+	msgs[1].len = len;
+	msgs[1].flags = IIC_M_RD;
+
+	error = mdx_i2c_transfer(&i2c0, msgs, 2);
+
+	return (error);
+}
+
+static int
+ccs811_write(uint8_t reg, uint8_t *val, int len)
+{
+	struct i2c_msg msgs[2];
+	uint8_t buf[16];
+	uint8_t i2c_addr;
+	int error;
+
+	i2c_addr = 0x5a;
+
+	buf[0] = reg;
+	memcpy(&buf[1], val, len);
+
+	/* Write register */
+	msgs[0].slave = i2c_addr;
+	msgs[0].buf = buf;
+	msgs[0].len = 1 + len;
+	msgs[0].flags = 0;
+
+	error = mdx_i2c_transfer(&i2c0, msgs, 1);
+
+	return (error);
+}
+
 int
 main(void)
 {
+	uint8_t val;
+	uint8_t data[8];
+
+	ccs811_read(CCS811_STATUS, &val, 1);
+
+	printf("status %x\n", val);
+
+	ccs811_write(CCS811_APP_START, 0, 0);
+
+	val = (2 << 4);
+	ccs811_write(CCS811_MEAS_MODE, &val, 1);
+
+	ccs811_read(CCS811_STATUS, &val, 1);
+	printf("hello status %x\n", val);
+
+	ccs811_read(CCS811_MEAS_MODE, &val, 1);
+	printf("hello measmode %x\n", val);
+
+	uint16_t eco2;
+	uint16_t tvoc;
 
 	while (1) {
-		printf("hello\n");
-		mdx_usleep(100000);
+		ccs811_read(CCS811_ALG_RESULT_DATA, data, 8);
+		eco2 = data[0] << 8 | data[1];
+		tvoc = data[2] << 8 | data[3];
+
+		printf("eCo2 %d tvoc %d\n", eco2, tvoc);
+
+		mdx_usleep(1000000);
 	}
 
 	return (0);
