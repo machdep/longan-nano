@@ -33,6 +33,10 @@ SECTIONS
 		*(.rodata*);
 	} > flash
 
+	.sdata : {
+		*(.sdata*);
+	} > flash
+
 	/* Ensure _smem is associated with the next section */
 	. = .;
 	_smem = ABSOLUTE(.);
