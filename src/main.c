@@ -90,29 +90,46 @@ ccs811_write(uint8_t reg, uint8_t *val, int len)
 int
 main(void)
 {
-	uint8_t val;
 	uint8_t data[8];
+	uint8_t val;
+	int error;
 
-	ccs811_read(CCS811_STATUS, &val, 1);
+	error = ccs811_read(CCS811_STATUS, &val, 1);
+	if (error)
+		panic("%s: error %d\n", __func__, error);
+
+	uint32_t addr;
+	addr = 0x20000001;
+	printf("test %x\n", *(uint32_t *)addr);
 
 	printf("status %x\n", val);
 
-	ccs811_write(CCS811_APP_START, 0, 0);
+	error = ccs811_write(CCS811_APP_START, 0, 0);
+	if (error)
+		panic("%s: error %d\n", __func__, error);
 
-	val = (2 << 4);
-	ccs811_write(CCS811_MEAS_MODE, &val, 1);
+	val = (1 << 4);
+	error = ccs811_write(CCS811_MEAS_MODE, &val, 1);
+	if (error)
+		panic("%s: error %d\n", __func__, error);
 
-	ccs811_read(CCS811_STATUS, &val, 1);
+	error = ccs811_read(CCS811_STATUS, &val, 1);
+	if (error)
+		panic("%s: error %d\n", __func__, error);
 	printf("hello status %x\n", val);
 
-	ccs811_read(CCS811_MEAS_MODE, &val, 1);
+	error = ccs811_read(CCS811_MEAS_MODE, &val, 1);
+	if (error)
+		panic("%s: error %d\n", __func__, error);
 	printf("hello measmode %x\n", val);
 
 	uint16_t eco2;
 	uint16_t tvoc;
 
 	while (1) {
-		ccs811_read(CCS811_ALG_RESULT_DATA, data, 8);
+		error = ccs811_read(CCS811_ALG_RESULT_DATA, data, 8);
+		if (error)
+			panic("%s: error %d\n", __func__, error);
 		eco2 = data[0] << 8 | data[1];
 		tvoc = data[2] << 8 | data[3];
 
