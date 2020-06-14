@@ -39,13 +39,19 @@
 #include <arch/riscv/include/clic.h>
 #include <arch/riscv/gigadevice/gd32v.h>
 
+#include "lcd.h"
+
 static struct mdx_device rcu;
 static struct mdx_device gpioa;
-static struct mdx_device gpiob;
+struct mdx_device gpiob;
 static struct mdx_device usart;
 static struct mdx_device timer0;
 static struct mdx_device clic;
 struct mdx_device i2c0;
+struct mdx_device spi;
+
+#define	CCS811_SCL	6	/* Port B */
+#define	CCS811_SDA	7	/* Port B */
 
 void
 board_init(void)
@@ -59,7 +65,8 @@ board_init(void)
 	gd32v_rcu_init(&rcu, BASE_RCU);
 	gd32v_rcu_setup(&rcu, 0,
 	    APB1EN_TIMER1EN | APB1EN_I2C0EN,
-	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN | APB2EN_PBEN);
+	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN |
+	    APB2EN_PBEN | APB2EN_SPI0EN | APB2EN_AFEN);
 
 	gd32v_gpio_init(&gpioa, BASE_GPIOA);
 	gd32v_gpio_init(&gpiob, BASE_GPIOB);
@@ -78,6 +85,7 @@ board_init(void)
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
+	/* CCS811 */
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_MEDIUM | MDX_GPIO_PUSH_PULL;
 	mdx_gpio_configure(&gpioa, 0, 12, reg); //wak
 	mdx_gpio_configure(&gpioa, 0, 11, reg); //int
@@ -98,8 +106,20 @@ board_init(void)
 
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_HIGH;
 	reg |= MDX_GPIO_OPEN_DRAIN | MDX_GPIO_ALT_FUNC;
-	mdx_gpio_configure(&gpiob, 0, 6, reg);
-	mdx_gpio_configure(&gpiob, 0, 7, reg);
+	mdx_gpio_configure(&gpiob, 0, CCS811_SCL, reg);
+	mdx_gpio_configure(&gpiob, 0, CCS811_SDA, reg);
+
+	/* LCD */
+	reg = MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC | MDX_GPIO_SPEED_HIGH | MDX_GPIO_PUSH_PULL;
+	mdx_gpio_configure(&gpioa, 0, LCD_MOSI, reg);
+	mdx_gpio_configure(&gpioa, 0, LCD_SCK, reg);
+
+	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_MEDIUM | MDX_GPIO_PUSH_PULL;
+	mdx_gpio_configure(&gpiob, 0, LCD_DC, reg);
+	mdx_gpio_configure(&gpiob, 0, LCD_RST, reg);
+	mdx_gpio_configure(&gpiob, 0, LCD_CS, reg);
+
+	gd32v_spi_init(&spi, BASE_SPI0);
 
 	clic_init(&clic, BASE_ECLIC);
 

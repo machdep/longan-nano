@@ -35,6 +35,8 @@
 #include <dev/i2c/i2c.h>
 #include <dev/ccs811/ccs811.h>
 
+#include "lcd.h"
+
 extern struct mdx_device i2c0;
 
 static uint8_t
@@ -136,6 +138,8 @@ main(void)
 		printf("eCo2 %d tvoc %d\n", eco2, tvoc);
 
 		mdx_usleep(1000000);
+
+		lcd_init();
 	}
 
 	return (0);
