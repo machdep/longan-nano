@@ -4,8 +4,8 @@ MEMORY
 	 * top 0x4000 bytes is reserved for the DTB
 	 */
 	flash   (rx)  : ORIGIN = 0x08000000, LENGTH = 128k
-	sram0   (rwx) : ORIGIN = 0x20000000, LENGTH = 16k
-	sram1   (rwx) : ORIGIN = 0x20004000, LENGTH = 16k /* malloc */
+	sram0   (rwx) : ORIGIN = 0x20000000, LENGTH = 24k
+	sram1   (rwx) : ORIGIN = 0x20006000, LENGTH = 8k /* malloc */
 }
 
 ENTRY(__start)
@@ -31,6 +31,10 @@ SECTIONS
 
 	.rodata : {
 		*(.rodata*);
+
+		. = ALIGN(4);
+		PROVIDE(sfont = .);
+		INCLUDE "fonts/ter-132n.ld";
 	} > flash
 
 	.sdata : {

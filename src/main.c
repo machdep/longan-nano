@@ -125,6 +125,8 @@ main(void)
 		panic("%s: error %d\n", __func__, error);
 	printf("hello measmode %x\n", val);
 
+	lcd_init();
+
 	uint16_t eco2;
 	uint16_t tvoc;
 
@@ -137,9 +139,8 @@ main(void)
 
 		printf("eCo2 %d tvoc %d\n", eco2, tvoc);
 
+		lcd_update(eco2);
 		mdx_usleep(1000000);
-
-		lcd_init();
 	}
 
 	return (0);

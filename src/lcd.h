@@ -27,6 +27,9 @@
 #ifndef _SRC_LCD_H_
 #define	_SRC_LCD_H_
 
+#define	LCD_WIDTH	160
+#define	LCD_HEIGHT	80
+
 #define	LCD_MOSI	7	/* Port A */
 #define	LCD_SCK		5	/* Port A */
 #define	LCD_DC		0	/* Port B */
@@ -34,5 +37,6 @@
 #define	LCD_CS		2	/* Port B */
 
 void lcd_init(void);
+void lcd_update(int val);
 
 #endif /* !_SRC_LCD_H_ */
