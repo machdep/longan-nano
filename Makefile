@@ -8,6 +8,7 @@ all:
 	@${CMD} -j mdepx.conf
 	@${CROSS_COMPILE}objcopy -O ihex obj/${APP}.elf obj/${APP}.hex
 	@${CROSS_COMPILE}objcopy -O binary obj/${APP}.elf obj/${APP}.bin
+	@${CROSS_COMPILE}size obj/${APP}.elf
 
 debug:
 	@${CMD} -d mdepx.conf

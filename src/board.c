@@ -60,7 +60,7 @@ board_init(void)
 
 	/* Add some memory so OF could allocate devices and their softc. */
 	mdx_fl_init();
-	mdx_fl_add_region(0x20006000, 0x2000);
+	mdx_fl_add_region(0x20007800, 0x800);
 
 	gd32v_rcu_init(&rcu, BASE_RCU);
 	gd32v_rcu_setup(&rcu, 0,
