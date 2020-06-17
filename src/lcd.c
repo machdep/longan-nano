@@ -32,7 +32,6 @@
 #include <dev/st7789v/st7789v.h>
 
 #include "lcd.h"
-#include <lib/libfont/libfont.h>
 #include <lib/lvgl/src/lv_font/lv_font.h>
 #include <lib/lvgl/src/lv_font/lv_font_fmt_txt.h>
 
@@ -40,9 +39,6 @@ extern struct mdx_device spi;
 extern struct mdx_device gpiob;
 extern uint32_t sfont;
 extern lv_font_t tahoma_65;
-int undraw;
-
-//uint8_t box[30*59];
 
 const uint8_t _lv_bpp1_opa_table[2]  = {0, 255};          /*Opacity mapping with bpp = 1 (Just for compatibility)*/
 const uint8_t _lv_bpp2_opa_table[4]  = {0, 85, 170, 255}; /*Opacity mapping with bpp = 2*/
@@ -176,54 +172,16 @@ lcd_set_addr(int xs, int ys, int xe, int ye)
 }
 
 static void
-draw_pixel(void *arg, int x, int y, int pixel)
+draw_pixel(lv_font_glyph_dsc_t *g, int y, int x, int pixel)
 {
-	uint8_t data[2];
+	uint8_t *buf;
 
-	if (pixel && !undraw) {
-		data[0] = pixel >> 8;
-		data[1] = 0; //pixel & 0xff;
-	} else {
-		data[0] = 0x4f;
-		data[1] = 0; //0x4f;
-	}
-	mdx_spi_transfer(&spi, data, NULL, 2);
-}
+	buf = g_data.ptr;
 
-#if 0
-static void
-draw_text(char *z)
-{
-	struct char_info ci;
-	int x;
-	int i;
-
-	g_data.ptr = (uint8_t *)&g_data.buffer[0];
-	x = 0;
-
-	for (i = 0; i < strlen(z); i++) {
-		get_char_info(&g_data.font, z[i], &ci);
-		lcd_set_addr(x, 0, x + ci.xsize, ci.ysize);
-		draw_char(&g_data.font, z[i]);
-		g_data.ptr += ci.xsize;
-		x += ci.xsize;
-	}
-}
-#endif
-
-static void
-lcd_clear(void)
-{
-	uint8_t data[2];
-	int i;
-
-	lcd_set_addr(0, 0, LCD_WIDTH, LCD_HEIGHT);
-
-	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++) {
-		data[0] = 0x4f;
-		data[1] = 0; //x4f;
-		mdx_spi_transfer(&spi, data, NULL, 2);
-	}
+	if (pixel)
+		buf[(x + y * LCD_WIDTH) * 2] = pixel >> 8;
+	else
+		buf[(x + y * LCD_WIDTH) * 2] = 0x4f;
 }
 
 static void
@@ -231,8 +189,20 @@ lcd_clear_buf(void)
 {
 	int i;
 
-	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++)
+	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * 2; i += 2) {
 		g_data.buffer[i] = 0x4f;
+		g_data.buffer[i + 1] = 0;
+	}
+}
+
+static void
+lcd_flush(void)
+{
+	uint8_t data[2];
+	int i;
+
+	lcd_set_addr(0, 0, LCD_WIDTH, LCD_HEIGHT);
+	mdx_spi_transfer(&spi, g_data.buffer, NULL, LCD_WIDTH * LCD_HEIGHT * 2);
 }
 
 static void
@@ -323,8 +293,6 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 	col_bit_max = 8 - bpp;
 	col_bit_row_ofs = (box_w + col_start - col_end) * bpp;
 
-	//lcd_set_addr(x, 0, x + box_w, box_h);
-
 	for (row = row_start ; row < row_end; row++) {
 		//mask_p_start = mask_p;
 		bitmask = bitmask_init >> col_bit;
@@ -339,7 +307,7 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 				//mask_buf[mask_p] = 0;
 			}
 			//printf("%d/%d: %x\n", row, col, letter_px);
-			draw_pixel(NULL, row, col, bpp_opa_table_p[letter_px]);
+			draw_pixel(g, row, col, bpp_opa_table_p[letter_px]);
 
 			/* Go to the next column. */
 			if (col_bit < col_bit_max) {
@@ -389,10 +357,10 @@ lvgl_draw(char *z)
 		if (map_p == NULL)
 			panic("error 1");
 
-		lcd_set_addr(x, y, x + g.box_w, y + g.box_h);
 		lvgl_letter(font_p, &g, map_p);
 
 		x += g.box_w;
+		g_data.ptr += g.box_w * 2;
 	}
 }
 
@@ -404,15 +372,6 @@ lcd_init(void)
 	int error;
 
 	mdx_gpio_set(&gpiob, 0, LCD_RST, 1);
-
-#if 0
-	bzero(&g_data.font, sizeof(struct font_info));
-	error = font_init(&g_data.font, (uint8_t *)&sfont);
-	if (error != 0)
-		printf("could not initialize font\n");
-	g_data.font.draw_pixel = draw_pixel;
-	g_data.font.draw_pixel_arg = &g_data;
-#endif
 
 	cs_enable();
 	for (p = init_seq; *p != 0xff; p++) {
@@ -429,12 +388,8 @@ lcd_init(void)
 			mdx_spi_transfer(&spi, &cmd, NULL, 1);
 		}
 	}
-	lcd_clear();
-
 	cs_disable();
 }
-
-char old_text[16];
 
 void
 lcd_update(int val)
@@ -443,16 +398,10 @@ lcd_update(int val)
 
 	sprintf(text, "%d     ", val);
 
-	cs_enable();
-	if (1 == 0) {
-		undraw = 1;
-		lvgl_draw(old_text);
-	}
-	lcd_clear();
-
-	undraw = 0;
+	lcd_clear_buf();
 	lvgl_draw(text);
-	memcpy(old_text, text, 16);
 
+	cs_enable();
+	lcd_flush();
 	cs_disable();
 }
