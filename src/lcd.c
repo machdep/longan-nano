@@ -220,6 +220,32 @@ draw_pixel(lv_font_glyph_dsc_t *g, int y, int x, int pixel)
 }
 
 static void
+lcd_clear(void)
+{
+	struct dma_desc desc;
+	uint16_t data;
+	int len;
+
+	data = 0x4f4f;
+
+	lcd_set_addr(0, 0, LCD_WIDTH, LCD_HEIGHT);
+
+	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES;
+
+	desc.src_addr = &data;
+	desc.dst_addr = SPI0_DATA;
+	desc.src_inc = 0;
+	desc.dst_inc = 0;
+	desc.src_width = 16;
+	desc.dst_width = 16;
+	desc.direction = DMA_MEM_TO_DEV;
+	desc.count = len / 2;
+
+	gd32v_spi_test(&spi, 16);
+	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
+}
+
+static void
 lcd_clear_buf(void)
 {
 	int i;
@@ -456,6 +482,10 @@ lcd_update(int val)
 	sprintf(text, "%d ppm", val);
 
 	if (1 == 1) {
+		cs_enable();
+		lcd_clear();
+		cs_disable();
+
 		lcd_clear_buf();
 		lvgl_draw(text);
 	}
