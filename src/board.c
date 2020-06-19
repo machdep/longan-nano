@@ -47,6 +47,7 @@ struct mdx_device gpiob;
 static struct mdx_device usart;
 static struct mdx_device timer0;
 static struct mdx_device clic;
+struct mdx_device dma;
 struct mdx_device i2c0;
 struct mdx_device spi;
 
@@ -63,7 +64,8 @@ board_init(void)
 	mdx_fl_add_region(0x20007800, 0x800);
 
 	gd32v_rcu_init(&rcu, BASE_RCU);
-	gd32v_rcu_setup(&rcu, 0,
+	gd32v_rcu_setup(&rcu,
+	    AHBEN_DMA0EN,
 	    APB1EN_TIMER1EN | APB1EN_I2C0EN,
 	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN |
 	    APB2EN_PBEN | APB2EN_SPI0EN | APB2EN_AFEN);
@@ -80,6 +82,7 @@ board_init(void)
 
 	gd32v_timer_init(&timer0, BASE_TIMER0, 8000000);
 	gd32v_i2c_init(&i2c0, BASE_I2C0);
+	gd32v_dma_init(&dma, BASE_DMA0);
 
 	mdx_gpio_configure(&gpioa, 0, 9,
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
@@ -122,6 +125,10 @@ board_init(void)
 	gd32v_spi_init(&spi, BASE_SPI0);
 
 	clic_init(&clic, BASE_ECLIC);
+
+	/* DMA0 channel2 global interrupt */
+	mdx_intc_setup(&clic, 32, gd32v_dma_intr, &dma);
+	mdx_intc_enable(&clic, 32);
 
 	mdx_intc_setup(&clic, 46, gd32v_timer_intr, &timer0);
 	mdx_intc_enable(&clic, 46);

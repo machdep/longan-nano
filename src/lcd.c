@@ -35,10 +35,16 @@
 #include <lib/lvgl/src/lv_font/lv_font.h>
 #include <lib/lvgl/src/lv_font/lv_font_fmt_txt.h>
 
+#include <arch/riscv/gigadevice/gd32v_spi.h>
+#include <arch/riscv/gigadevice/gd32v_dma.h>
+
 extern struct mdx_device spi;
 extern struct mdx_device gpiob;
+extern struct mdx_device dma;
 extern uint32_t sfont;
-extern lv_font_t tahoma_65;
+extern lv_font_t tahoma_40;
+
+#define	LCD_BYTES	2
 
 const uint8_t _lv_bpp1_opa_table[2]  = {0, 255};          /*Opacity mapping with bpp = 1 (Just for compatibility)*/
 const uint8_t _lv_bpp2_opa_table[4]  = {0, 85, 170, 255}; /*Opacity mapping with bpp = 2*/
@@ -92,17 +98,46 @@ static const uint8_t init_seq[] = {
 };
 
 static struct global_data {
-	uint8_t buffer[LCD_WIDTH * LCD_HEIGHT * 2];
+	uint8_t buffer[LCD_WIDTH * LCD_HEIGHT * LCD_BYTES];
 	uint8_t *ptr;
 	//struct font_info font;
-} g_data;
+} g_data __aligned(16);
+
+#define	SPI0_DATA	(0x40013000 + 0x0C)
+#define	SPI0_CHAN	2
+
+static int
+mdx_spi_transfer2(mdx_device_t dev, uint8_t *out,
+    uint8_t *in, uint32_t len)
+{
+	struct dma_desc desc;
+
+	if (1 == 1) {
+		desc.src_addr = (uint32_t)out;
+		desc.dst_addr = SPI0_DATA;
+		desc.src_inc = 1;
+		desc.dst_inc = 0;
+		desc.src_width = 8;
+		desc.dst_width = 8;
+		desc.direction = DMA_MEM_TO_DEV;
+		desc.count = len;
+
+		/* dma */
+		gd32v_spi_test(&spi, 8);
+		gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
+	} else {
+		mdx_spi_transfer(dev, out, in, len);
+	}
+
+	return (0);
+}
 
 static void
 lcd_delay(void)
 {
 	//int i;
 
-	//for (i = 0; i < 10000; i++)
+	//for (i = 0; i < 100000; i++)
 	//	;
 }
 
@@ -145,43 +180,43 @@ lcd_set_addr(int xs, int ys, int xe, int ye)
 
 	data[0] = ST7789V_CASET;
 	lcd_command();
-	mdx_spi_transfer(&spi, data, NULL, 1);
+	mdx_spi_transfer2(&spi, data, NULL, 1);
 
 	data[0] = 0;
 	data[1] = xs + 1;
 	data[2] = 0;
 	data[3] = xe;
 	lcd_data();
-	mdx_spi_transfer(&spi, data, NULL, 4);
+	mdx_spi_transfer2(&spi, data, NULL, 4);
 
 	data[0] = ST7789V_RASET;
 	lcd_command();
-	mdx_spi_transfer(&spi, data, NULL, 1);
+	mdx_spi_transfer2(&spi, data, NULL, 1);
 
 	data[0] = 0;
 	data[1] = ys + 25 + 1;
 	data[2] = 0;
 	data[3] = ye + 25;
 	lcd_data();
-	mdx_spi_transfer(&spi, data, NULL, 4);
+	mdx_spi_transfer2(&spi, data, NULL, 4);
 
 	data[0] = ST7789V_RAMWR;
 	lcd_command();
-	mdx_spi_transfer(&spi, data, NULL, 1);
+	mdx_spi_transfer2(&spi, data, NULL, 1);
 	lcd_data();
 }
 
 static void
 draw_pixel(lv_font_glyph_dsc_t *g, int y, int x, int pixel)
 {
-	uint8_t *buf;
+	uint16_t *buf;
 
 	buf = g_data.ptr;
 
 	if (pixel)
-		buf[(x + y * LCD_WIDTH) * 2] = pixel >> 8;
+		buf[(x + y * LCD_WIDTH)] = 0;
 	else
-		buf[(x + y * LCD_WIDTH) * 2] = 0x4f;
+		buf[(x + y * LCD_WIDTH)] = 0x4f4f;
 }
 
 static void
@@ -189,20 +224,43 @@ lcd_clear_buf(void)
 {
 	int i;
 
-	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * 2; i += 2) {
+#if 0
+	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * LCD_BYTES; i += 2) {
 		g_data.buffer[i] = 0x4f;
 		g_data.buffer[i + 1] = 0;
 	}
+	return;
+#endif
+
+	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * LCD_BYTES; i += 1)
+		g_data.buffer[i] = 0x4f;
 }
 
 static void
 lcd_flush(void)
 {
-	uint8_t data[2];
-	int i;
+	struct dma_desc desc;
+	int len;
 
 	lcd_set_addr(0, 0, LCD_WIDTH, LCD_HEIGHT);
-	mdx_spi_transfer(&spi, g_data.buffer, NULL, LCD_WIDTH * LCD_HEIGHT * 2);
+
+	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES;
+
+	if (1 == 0) {
+		mdx_spi_transfer(&spi, g_data.buffer, NULL, len);
+	} else {
+		desc.src_addr = (uint32_t)g_data.buffer;
+		desc.dst_addr = SPI0_DATA;
+		desc.src_inc = 1;
+		desc.dst_inc = 0;
+		desc.src_width = 16;
+		desc.dst_width = 16;
+		desc.direction = DMA_MEM_TO_DEV;
+		desc.count = len / 2;
+
+		gd32v_spi_test(&spi, 16);
+		gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
+	}
 }
 
 static void
@@ -213,7 +271,7 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 
 	uint32_t bitmask_init;
 	uint32_t bitmask;
-	uint32_t shades;
+	//uint32_t shades;
 
 	bpp = g->bpp;
 	if (bpp == 3)
@@ -223,22 +281,22 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 	case 1:
 		bpp_opa_table_p = _lv_bpp1_opa_table;
 		bitmask_init = 0x80;
-		shades = 2;
+		//shades = 2;
 		break;
 	case 2:
 		bpp_opa_table_p = _lv_bpp2_opa_table;
 		bitmask_init = 0xC0;
-		shades = 4;
+		//shades = 4;
 		break;
 	case 4:
 		bpp_opa_table_p = _lv_bpp4_opa_table;
 		bitmask_init = 0xF0;
-		shades = 16;
+		//shades = 16;
 		break;
 	case 8:
 		bpp_opa_table_p = _lv_bpp8_opa_table;
 		bitmask_init = 0xFF;
-		shades = 256;
+		//shades = 256;
 		break;
 	default:
 		panic("invalid bpp");
@@ -262,7 +320,8 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 	pos_y = y + (font_p->line_height - font_p->base_line)
 	    - g->box_h - g->ofs_y;
 
-	//printf("pos_x %d pos_y %d\n", pos_x, pos_y);
+	if (1 == 0)
+		printf("pos_x %d pos_y %d\n", pos_x, pos_y);
 
 	box_w = g->box_w;
 	box_h = g->box_h;
@@ -335,15 +394,14 @@ lvgl_draw(char *z)
 	lv_font_glyph_dsc_t g;
 	const uint8_t *map_p;
 	lv_font_t *font_p;
-	uint32_t letter;
-	int x, y;
+	int x;
 	int i;
 
-	font_p = &tahoma_65;
+	font_p = &tahoma_40;
 
-	g_data.ptr = (uint8_t *)&g_data.buffer[0];
+	g_data.ptr = (uint8_t *)g_data.buffer;
+	g_data.ptr += (4 + (4 * LCD_WIDTH)) * LCD_BYTES;
 	x = 4;
-	y = 4;
 	bool g_ret;
 
 	for (i = 0; i < strlen(z); i++) {
@@ -360,7 +418,7 @@ lvgl_draw(char *z)
 		lvgl_letter(font_p, &g, map_p);
 
 		x += g.box_w;
-		g_data.ptr += g.box_w * 2;
+		g_data.ptr += g.box_w * LCD_BYTES;
 	}
 }
 
@@ -369,7 +427,6 @@ lcd_init(void)
 {
 	const uint8_t *p;
 	uint8_t cmd;
-	int error;
 
 	mdx_gpio_set(&gpiob, 0, LCD_RST, 1);
 
@@ -378,14 +435,14 @@ lcd_init(void)
 		cmd = *p++;
 		//printf("transmitting command %x\n", cmd);
 		lcd_command();
-		mdx_spi_transfer(&spi, &cmd, NULL, 1);
+		mdx_spi_transfer2(&spi, &cmd, NULL, 1);
 		if (*p == 0xff)
 			continue;
 		lcd_data();
 		while(*p != 0xff) {
 			cmd = *p++;
 			//printf("transmitting data %x\n", cmd);
-			mdx_spi_transfer(&spi, &cmd, NULL, 1);
+			mdx_spi_transfer2(&spi, &cmd, NULL, 1);
 		}
 	}
 	cs_disable();
@@ -396,10 +453,12 @@ lcd_update(int val)
 {
 	char text[16];
 
-	sprintf(text, "%d     ", val);
+	sprintf(text, "%d ppm", val);
 
-	lcd_clear_buf();
-	lvgl_draw(text);
+	if (1 == 1) {
+		lcd_clear_buf();
+		lvgl_draw(text);
+	}
 
 	cs_enable();
 	lcd_flush();
