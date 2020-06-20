@@ -26,7 +26,19 @@
 
 #include <machine/asm.h>
 
+	/* Jump to logical address to ensure correct operation of RAM region */
 ASM_ENTRY(__start)
+	la	a0, __start
+	li	a1, 1
+	slli	a1, a1, 29
+	bleu	a1, a0, __start1
+	srli	a1, a1, 2
+	bleu	a1, a0, __start1
+	la	a0, __start1
+	add	a0, a0, a1
+	jr	a0
+
+ASM_ENTRY(__start1)
 	la	sp, idle_thread_stack + MDX_THREAD_STACK_SIZE
 	la	t0, cpu_exception_handler
 
