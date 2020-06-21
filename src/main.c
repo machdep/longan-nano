@@ -39,10 +39,15 @@
 
 extern struct mdx_device i2c0;
 
+/* Override cpu_idle() from machdep.c */
 void
 cpu_idle(void)
 {
 
+	/*
+	 * gd32v DMA does not work properly in WFI state,
+	 * so do nothing here.
+	 */
 }
 
 static uint8_t
