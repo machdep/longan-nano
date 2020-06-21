@@ -56,13 +56,22 @@ main(void)
 {
 	uint16_t eco2;
 	uint16_t tvoc;
+	char text[16];
 	int error;
 
-	error = ccs811_init();
-	if (error)
-		panic("could not initialize CCS811\n");
-
 	lcd_init();
+
+	error = ccs811_init();
+	if (error) {
+		sprintf(text, "ccs811");
+		lcd_update(0, text);
+		sprintf(text, "error");
+		lcd_update(1, text);
+		panic("could not initialize CCS811\n");
+	}
+
+	sprintf(text, "Co2(ppm)");
+	lcd_update(1, text);
 
 	while (1) {
 		error = ccs811_read_data(&eco2, &tvoc);
@@ -71,7 +80,9 @@ main(void)
 
 		printf("eCo2 %d tvoc %d\n", eco2, tvoc);
 
-		lcd_update(eco2);
+		sprintf(text, "%d", eco2);
+		lcd_update(0, text);
+
 		mdx_usleep(1000000);
 	}
 

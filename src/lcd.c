@@ -421,23 +421,18 @@ lcd_init(void)
 }
 
 void
-lcd_update(int val)
+lcd_update(int line, char *text)
 {
-	char text[16];
-
-	sprintf(text, "%d", val);
 
 	cs_enable();
+
 	lcd_clear_buf();
 	lvgl_draw(text);
-	lcd_flush(0, 0);
-	cs_disable();
 
-	sprintf(text, "Co2(ppm)", val);
+	if (line == 0)
+		lcd_flush(0, 0);
+	else
+		lcd_flush(0, LCD_HEIGHT / 2);
 
-	cs_enable();
-	lcd_clear_buf();
-	lvgl_draw(text);
-	lcd_flush(0, LCD_HEIGHT / 2);
 	cs_disable();
 }

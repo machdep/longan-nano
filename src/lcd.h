@@ -37,6 +37,6 @@
 #define	LCD_CS		2	/* Port B */
 
 void lcd_init(void);
-void lcd_update(int val);
+void lcd_update(int line, char *text);
 
 #endif /* !_SRC_LCD_H_ */
