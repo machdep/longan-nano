@@ -31,10 +31,6 @@ SECTIONS
 
 	.rodata : {
 		*(.rodata*);
-
-		. = ALIGN(4);
-		PROVIDE(sfont = .);
-		INCLUDE "fonts/ter-132n.ld";
 	} > flash
 
 	.sdata : {
