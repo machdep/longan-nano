@@ -58,7 +58,10 @@ main(void)
 	uint16_t tvoc;
 	int error;
 
-	ccs811_init();
+	error = ccs811_init();
+	if (error)
+		panic("could not initialize CCS811\n");
+
 	lcd_init();
 
 	while (1) {
