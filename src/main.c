@@ -100,6 +100,8 @@ main(void)
 {
 	uint8_t data[8];
 	uint8_t val;
+	uint16_t eco2;
+	uint16_t tvoc;
 	int error;
 
 	error = ccs811_read(CCS811_STATUS, &val, 1);
@@ -132,9 +134,6 @@ main(void)
 	printf("hello measmode %x\n", val);
 
 	lcd_init();
-
-	uint16_t eco2;
-	uint16_t tvoc;
 
 	while (1) {
 		error = ccs811_read(CCS811_ALG_RESULT_DATA, data, 8);
