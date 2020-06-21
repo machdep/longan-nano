@@ -43,7 +43,12 @@ extern struct mdx_device gpiob;
 extern struct mdx_device dma;
 extern lv_font_t tahoma_40;
 
+#define	dprintf(fmt, ...)
+
 #define	LCD_BYTES	2
+
+#define	SPI0_DATA	(0x40013000 + 0x0C)
+#define	SPI0_CHAN	2
 
 static const uint8_t init_seq[] = {
 	0x21, 0xff,
@@ -71,39 +76,30 @@ static struct global_data {
 	uint8_t *ptr;
 } g_data __aligned(16);
 
-#define	SPI0_DATA	(0x40013000 + 0x0C)
-#define	SPI0_CHAN	2
-
 static int
-mdx_spi_transfer2(mdx_device_t dev, uint8_t *out,
+transfer_dma(mdx_device_t dev, uint8_t *out,
     uint8_t *in, uint32_t len)
 {
 	struct dma_desc desc;
 	struct gd32v_spi_config conf;
 
-	bzero(&conf, sizeof(struct gd32v_spi_config));
 	conf.master = true;
 	conf.prescaler = 2;
 	conf.ff16 = false;
 	conf.dma_tx = true;
 	conf.dma_rx = false;
 
-	if (1 == 1) {
-		desc.src_addr = (uint32_t)out;
-		desc.dst_addr = SPI0_DATA;
-		desc.src_inc = 1;
-		desc.dst_inc = 0;
-		desc.src_width = 8;
-		desc.dst_width = 8;
-		desc.direction = DMA_MEM_TO_DEV;
-		desc.count = len;
+	desc.src_addr = (uint32_t)out;
+	desc.dst_addr = SPI0_DATA;
+	desc.src_inc = 1;
+	desc.dst_inc = 0;
+	desc.src_width = 8;
+	desc.dst_width = 8;
+	desc.direction = DMA_MEM_TO_DEV;
+	desc.count = len;
 
-		/* dma */
-		gd32v_spi_setup(&spi, &conf);
-		gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
-	} else {
-		mdx_spi_transfer(dev, out, in, len);
-	}
+	gd32v_spi_setup(&spi, &conf);
+	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
 
 	return (0);
 }
@@ -111,10 +107,7 @@ mdx_spi_transfer2(mdx_device_t dev, uint8_t *out,
 static void
 lcd_delay(void)
 {
-	//int i;
 
-	//for (i = 0; i < 100000; i++)
-	//	;
 }
 
 static void
@@ -156,29 +149,29 @@ lcd_set_addr(int xs, int ys, int xe, int ye)
 
 	data[0] = ST7789V_CASET;
 	lcd_command();
-	mdx_spi_transfer2(&spi, data, NULL, 1);
+	transfer_dma(&spi, data, NULL, 1);
 
 	data[0] = 0;
 	data[1] = xs + 1;
 	data[2] = 0;
 	data[3] = xe;
 	lcd_data();
-	mdx_spi_transfer2(&spi, data, NULL, 4);
+	transfer_dma(&spi, data, NULL, 4);
 
 	data[0] = ST7789V_RASET;
 	lcd_command();
-	mdx_spi_transfer2(&spi, data, NULL, 1);
+	transfer_dma(&spi, data, NULL, 1);
 
 	data[0] = 0;
 	data[1] = ys + 25 + 1;
 	data[2] = 0;
 	data[3] = ye + 25;
 	lcd_data();
-	mdx_spi_transfer2(&spi, data, NULL, 4);
+	transfer_dma(&spi, data, NULL, 4);
 
 	data[0] = ST7789V_RAMWR;
 	lcd_command();
-	mdx_spi_transfer2(&spi, data, NULL, 1);
+	transfer_dma(&spi, data, NULL, 1);
 	lcd_data();
 }
 
@@ -209,7 +202,6 @@ lcd_clear(void)
 
 	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES;
 
-	bzero(&desc, sizeof(struct dma_desc));
 	desc.src_addr = &data;
 	desc.dst_addr = SPI0_DATA;
 	desc.src_inc = 0;
@@ -219,7 +211,6 @@ lcd_clear(void)
 	desc.direction = DMA_MEM_TO_DEV;
 	desc.count = len / 2;
 
-	bzero(&conf, sizeof(struct gd32v_spi_config));
 	conf.master = true;
 	conf.prescaler = 2;
 	conf.ff16 = true;
@@ -233,54 +224,14 @@ lcd_clear(void)
 static void
 lcd_clear_buf(void)
 {
-	int i;
 	int len;
-
-#if 0
-	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * LCD_BYTES; i += 2) {
-		g_data.buffer[i] = 0x4f;
-		g_data.buffer[i + 1] = 0;
-	}
-	return;
-#endif
+	int i;
 
 	/* Half buffer */
 	len = (LCD_WIDTH * LCD_HEIGHT * LCD_BYTES) / 2;
 
 	for (i = 0; i < len; i += 1)
 		g_data.buffer[i] = 0x4f;
-}
-
-static void
-lcd_flush_g(lv_font_glyph_dsc_t *g, int x, int y)
-{
-	struct gd32v_spi_config conf;
-	struct dma_desc desc;
-	int len;
-
-	lcd_set_addr(x, y, x + g->box_w, y + g->box_h);
-
-	len = g->box_w * g->box_h * 2;
-
-	bzero(&desc, sizeof(struct dma_desc));
-	desc.src_addr = (uint32_t)g_data.buffer;
-	desc.dst_addr = SPI0_DATA;
-	desc.src_inc = 1;
-	desc.dst_inc = 0;
-	desc.src_width = 8;
-	desc.dst_width = 8;
-	desc.direction = DMA_MEM_TO_DEV;
-	desc.count = len;
-
-	bzero(&conf, sizeof(struct gd32v_spi_config));
-	conf.master = true;
-	conf.prescaler = 2;
-	conf.ff16 = false;
-	conf.dma_tx = true;
-	conf.dma_rx = false;
-
-	gd32v_spi_setup(&spi, &conf);
-	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
 }
 
 static void
@@ -295,37 +246,42 @@ lcd_flush(int x, int y)
 	/* Half buffer */
 	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES / 2;
 
-	bzero(&conf, sizeof(struct gd32v_spi_config));
 	conf.master = true;
 	conf.prescaler = 2;
 	conf.ff16 = true;
 	conf.dma_tx = true;
 	conf.dma_rx = false;
 
-	if (1 == 0) {
-		mdx_spi_transfer(&spi, g_data.buffer, NULL, len);
-	} else {
-		desc.src_addr = (uint32_t)g_data.buffer;
-		desc.dst_addr = SPI0_DATA;
-		desc.src_inc = 1;
-		desc.dst_inc = 0;
-		desc.src_width = 16;
-		desc.dst_width = 16;
-		desc.direction = DMA_MEM_TO_DEV;
-		desc.count = len / 2;
+	desc.src_addr = (uint32_t)g_data.buffer;
+	desc.dst_addr = SPI0_DATA;
+	desc.src_inc = 1;
+	desc.dst_inc = 0;
+	desc.src_width = 16;
+	desc.dst_width = 16;
+	desc.direction = DMA_MEM_TO_DEV;
+	desc.count = len / 2;
 
-		gd32v_spi_setup(&spi, &conf);
-		gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
-	}
+	gd32v_spi_setup(&spi, &conf);
+	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
 }
 
 static void
 lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 {
-	uint32_t bpp;
-
 	uint32_t bitmask_init;
 	uint32_t bitmask;
+	uint32_t col_bit_max;
+	uint32_t col_bit_row_ofs;
+	uint32_t bit_ofs;
+	uint32_t col_bit;
+	uint32_t bpp;
+	int32_t pos_x, pos_y;
+	int32_t col, row;
+	int32_t width_bit;
+	int32_t row_start, col_start;
+	int32_t row_end, col_end;
+	uint8_t letter_px;
+	int x, y;
 
 	bpp = g->bpp;
 	if (bpp == 3)
@@ -348,17 +304,6 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 		panic("invalid bpp");
 	}
 
-	int32_t pos_x;
-	int32_t pos_y;
-	int32_t col, row;
-	int32_t box_w;
-	int32_t box_h;
-	int32_t width_bit;
-	int32_t row_start, col_start;
-	int32_t row_end, col_end;
-	uint32_t bit_ofs;
-
-	int x, y;
 	x = 0;
 	y = 0;
 
@@ -366,40 +311,27 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 	pos_y = y + (font_p->line_height - font_p->base_line)
 	    - g->box_h - g->ofs_y;
 
-	if (1 == 0)
-		printf("pos_x %d pos_y %d\n", pos_x, pos_y);
+	dprintf("pos_x %d pos_y %d\n", pos_x, pos_y);
 
-	box_w = g->box_w;
-	box_h = g->box_h;
-
-	width_bit = box_w * bpp; /* Letter width in bits. */
+	width_bit = g->box_w * bpp; /* Letter width in bits. */
 
 	/* Calculate the col/row start/end on the map. */
 	col_start = 0;
 	row_start = 0;
-	col_end = box_w;
-	row_end = box_h;
+	col_end = g->box_w;
+	row_end = g->box_h;
 
 	/* Move on the map too. */
 	bit_ofs = (row_start * width_bit) + (col_start * bpp);
 	map_p += bit_ofs >> 3;
 
-	//printf("row_end %d col_end %d\n", row_end, col_end);
+	dprintf("row_end %d col_end %d\n", row_end, col_end);
 
-	uint32_t col_bit;
-	uint8_t letter_px;
-
-	col_bit = bit_ofs & 0x7; /* "& 0x7" equals to "% 8" just faster */
-
-	//int32_t mask_p_start;
-	uint32_t col_bit_max;
-	uint32_t col_bit_row_ofs;
-
+	col_bit = bit_ofs & 0x7;
 	col_bit_max = 8 - bpp;
-	col_bit_row_ofs = (box_w + col_start - col_end) * bpp;
+	col_bit_row_ofs = (g->box_w + col_start - col_end) * bpp;
 
 	for (row = row_start ; row < row_end; row++) {
-		//mask_p_start = mask_p;
 		bitmask = bitmask_init >> col_bit;
 
 		for (col = col_start; col < col_end; col++) {
@@ -417,9 +349,6 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 				bitmask = bitmask_init;
 				map_p++;
 			}
-
-			/* Next mask byte. */
-			//mask_p++;
 		}
 
 		col_bit += col_bit_row_ofs;
@@ -452,7 +381,7 @@ lvgl_draw(char *z)
 		if (g_ret == false)
 			panic("error");
 
-		//printf("g.box_h %d %d\n", g.box_h, g.box_w);
+		dprintf("g.box_h %d %d\n", g.box_h, g.box_w);
 
 		map_p = lv_font_get_glyph_bitmap(font_p, z[i]);
 		if (map_p == NULL)
@@ -476,16 +405,16 @@ lcd_init(void)
 	cs_enable();
 	for (p = init_seq; *p != 0xff; p++) {
 		cmd = *p++;
-		//printf("transmitting command %x\n", cmd);
+		dprintf("transmitting command %x\n", cmd);
 		lcd_command();
-		mdx_spi_transfer2(&spi, &cmd, NULL, 1);
+		transfer_dma(&spi, &cmd, NULL, 1);
 		if (*p == 0xff)
 			continue;
 		lcd_data();
 		while(*p != 0xff) {
 			cmd = *p++;
-			//printf("transmitting data %x\n", cmd);
-			mdx_spi_transfer2(&spi, &cmd, NULL, 1);
+			dprintf("transmitting data %x\n", cmd);
+			transfer_dma(&spi, &cmd, NULL, 1);
 		}
 	}
 	lcd_clear();
