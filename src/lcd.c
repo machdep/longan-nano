@@ -326,7 +326,6 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 
 	uint32_t bitmask_init;
 	uint32_t bitmask;
-	//uint32_t shades;
 
 	bpp = g->bpp;
 	if (bpp == 3)
@@ -335,19 +334,15 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 	switch(bpp) {
 	case 1:
 		bitmask_init = 0x80;
-		//shades = 2;
 		break;
 	case 2:
 		bitmask_init = 0xC0;
-		//shades = 4;
 		break;
 	case 4:
 		bitmask_init = 0xF0;
-		//shades = 16;
 		break;
 	case 8:
 		bitmask_init = 0xFF;
-		//shades = 256;
 		break;
 	default:
 		panic("invalid bpp");
@@ -517,5 +512,4 @@ lcd_update(int val)
 	lvgl_draw(text);
 	lcd_flush(0, LCD_HEIGHT / 2);
 	cs_disable();
-
 }
