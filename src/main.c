@@ -112,11 +112,6 @@ main(void)
 	error = ccs811_read(CCS811_STATUS, &val, 1);
 	if (error)
 		panic("%s: error %d\n", __func__, error);
-
-	uint32_t addr;
-	addr = 0x20000001;
-	printf("test %x\n", *(uint32_t *)addr);
-
 	printf("status %x\n", val);
 
 	error = ccs811_write(CCS811_APP_START, 0, 0);
