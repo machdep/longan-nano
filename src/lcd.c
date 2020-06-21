@@ -335,7 +335,6 @@ lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
 		bitmask = bitmask_init >> col_bit;
 
 		for (col = col_start; col < col_end; col++) {
-			/* Load the pixel's opacity into the mask. */
 			letter_px = (*map_p & bitmask) >>
 			    (col_bit_max - col_bit);
 			draw_pixel(g, row, col, letter_px);

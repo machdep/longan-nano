@@ -24,53 +24,10 @@
  * SUCH DAMAGE.
  */
 
-#include <sys/cdefs.h>
-#include <sys/console.h>
-#include <sys/callout.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/thread.h>
-#include <sys/mbuf.h>
+#ifndef _SRC_CCS811_H_
+#define	_SRC_CCS811_H_
 
-#include <dev/i2c/i2c.h>
-#include <dev/ccs811/ccs811.h>
+int ccs811_read_data(uint16_t *eco2, uint16_t *tvoc);
+int ccs811_init(void);
 
-#include "lcd.h"
-#include "ccs811.h"
-
-extern struct mdx_device i2c0;
-
-/* Override cpu_idle() from machdep.c */
-void
-cpu_idle(void)
-{
-
-	/*
-	 * gd32v DMA does not work properly in WFI state,
-	 * so do nothing here.
-	 */
-}
-
-int
-main(void)
-{
-	uint16_t eco2;
-	uint16_t tvoc;
-	int error;
-
-	ccs811_init();
-	lcd_init();
-
-	while (1) {
-		error = ccs811_read_data(&eco2, &tvoc);
-		if (error)
-			panic("%s: error %d\n", __func__, error);
-
-		printf("eCo2 %d tvoc %d\n", eco2, tvoc);
-
-		lcd_update(eco2);
-		mdx_usleep(1000000);
-	}
-
-	return (0);
-}
+#endif /* !_SRC_CCS811_H_ */
