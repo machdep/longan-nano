@@ -44,6 +44,7 @@
 static struct mdx_device rcu;
 static struct mdx_device gpioa;
 struct mdx_device gpiob;
+static struct mdx_device gpioc;
 static struct mdx_device usart;
 static struct mdx_device timer0;
 static struct mdx_device clic;
@@ -68,10 +69,11 @@ board_init(void)
 	    AHBEN_DMA0EN,
 	    APB1EN_TIMER1EN | APB1EN_I2C0EN,
 	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN |
-	    APB2EN_PBEN | APB2EN_SPI0EN | APB2EN_AFEN);
+	    APB2EN_PBEN | APB2EN_PCEN | APB2EN_SPI0EN | APB2EN_AFEN);
 
 	gd32v_gpio_init(&gpioa, BASE_GPIOA);
 	gd32v_gpio_init(&gpiob, BASE_GPIOB);
+	gd32v_gpio_init(&gpioc, BASE_GPIOC);
 
 	gd32v_usart_init(&usart, BASE_USART0, 8000000);
 
@@ -99,6 +101,10 @@ board_init(void)
 	mdx_gpio_set(&gpioa, 0, 11, 0);
 	mdx_gpio_set(&gpioa, 0, 8, 0);
 	mdx_gpio_set(&gpiob, 0, 15, 0);
+
+	/* Led */
+	mdx_gpio_configure(&gpioc, 0, 13, reg);
+	mdx_gpio_set(&gpioc, 0, 13, 0);
 
 #if 0
 	mdx_gpio_configure(&gpiob, 0, 6,
@@ -140,4 +146,5 @@ board_init(void)
 	mdx_intc_enable(&clic, 51);
 
 	printf("mdepx initialized\n");
+	gd32v_rcu_dump(&rcu);
 }

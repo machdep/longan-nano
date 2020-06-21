@@ -39,6 +39,12 @@
 
 extern struct mdx_device i2c0;
 
+void
+cpu_idle(void)
+{
+
+}
+
 static uint8_t
 ccs811_read(uint8_t reg, uint8_t *buf, int len)
 {

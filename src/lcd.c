@@ -98,7 +98,7 @@ static const uint8_t init_seq[] = {
 };
 
 static struct global_data {
-	uint8_t buffer[LCD_WIDTH * LCD_HEIGHT * LCD_BYTES];
+	uint8_t buffer[LCD_WIDTH * LCD_HEIGHT * LCD_BYTES / 2];
 	uint8_t *ptr;
 	//struct font_info font;
 } g_data __aligned(16);
@@ -111,6 +111,14 @@ mdx_spi_transfer2(mdx_device_t dev, uint8_t *out,
     uint8_t *in, uint32_t len)
 {
 	struct dma_desc desc;
+	struct gd32v_spi_config conf;
+
+	bzero(&conf, sizeof(struct gd32v_spi_config));
+	conf.master = true;
+	conf.prescaler = 2;
+	conf.ff16 = false;
+	conf.dma_tx = true;
+	conf.dma_rx = false;
 
 	if (1 == 1) {
 		desc.src_addr = (uint32_t)out;
@@ -123,7 +131,7 @@ mdx_spi_transfer2(mdx_device_t dev, uint8_t *out,
 		desc.count = len;
 
 		/* dma */
-		gd32v_spi_test(&spi, 8);
+		gd32v_spi_setup(&spi, &conf);
 		gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
 	} else {
 		mdx_spi_transfer(dev, out, in, len);
@@ -222,6 +230,7 @@ draw_pixel(lv_font_glyph_dsc_t *g, int y, int x, int pixel)
 static void
 lcd_clear(void)
 {
+	struct gd32v_spi_config conf;
 	struct dma_desc desc;
 	uint16_t data;
 	int len;
@@ -232,6 +241,7 @@ lcd_clear(void)
 
 	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES;
 
+	bzero(&desc, sizeof(struct dma_desc));
 	desc.src_addr = &data;
 	desc.dst_addr = SPI0_DATA;
 	desc.src_inc = 0;
@@ -241,7 +251,14 @@ lcd_clear(void)
 	desc.direction = DMA_MEM_TO_DEV;
 	desc.count = len / 2;
 
-	gd32v_spi_test(&spi, 16);
+	bzero(&conf, sizeof(struct gd32v_spi_config));
+	conf.master = true;
+	conf.prescaler = 2;
+	conf.ff16 = true;
+	conf.dma_tx = true;
+	conf.dma_rx = false;
+
+	gd32v_spi_setup(&spi, &conf);
 	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
 }
 
@@ -249,6 +266,7 @@ static void
 lcd_clear_buf(void)
 {
 	int i;
+	int len;
 
 #if 0
 	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * LCD_BYTES; i += 2) {
@@ -258,19 +276,63 @@ lcd_clear_buf(void)
 	return;
 #endif
 
-	for (i = 0; i < LCD_WIDTH * LCD_HEIGHT * LCD_BYTES; i += 1)
+	/* Half buffer */
+	len = (LCD_WIDTH * LCD_HEIGHT * LCD_BYTES) / 2;
+
+	for (i = 0; i < len; i += 1)
 		g_data.buffer[i] = 0x4f;
 }
 
 static void
-lcd_flush(void)
+lcd_flush_g(lv_font_glyph_dsc_t *g, int x, int y)
 {
+	struct gd32v_spi_config conf;
 	struct dma_desc desc;
 	int len;
 
-	lcd_set_addr(0, 0, LCD_WIDTH, LCD_HEIGHT);
+	lcd_set_addr(x, y, x + g->box_w, y + g->box_h);
 
-	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES;
+	len = g->box_w * g->box_h * 2;
+
+	bzero(&desc, sizeof(struct dma_desc));
+	desc.src_addr = (uint32_t)g_data.buffer;
+	desc.dst_addr = SPI0_DATA;
+	desc.src_inc = 1;
+	desc.dst_inc = 0;
+	desc.src_width = 8;
+	desc.dst_width = 8;
+	desc.direction = DMA_MEM_TO_DEV;
+	desc.count = len;
+
+	bzero(&conf, sizeof(struct gd32v_spi_config));
+	conf.master = true;
+	conf.prescaler = 2;
+	conf.ff16 = false;
+	conf.dma_tx = true;
+	conf.dma_rx = false;
+
+	gd32v_spi_setup(&spi, &conf);
+	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
+}
+
+static void
+lcd_flush(int x, int y)
+{
+	struct gd32v_spi_config conf;
+	struct dma_desc desc;
+	int len;
+
+	lcd_set_addr(x, y, LCD_WIDTH, y + (LCD_HEIGHT / 2));
+
+	/* Half buffer */
+	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES / 2;
+
+	bzero(&conf, sizeof(struct gd32v_spi_config));
+	conf.master = true;
+	conf.prescaler = 2;
+	conf.ff16 = true;
+	conf.dma_tx = true;
+	conf.dma_rx = false;
 
 	if (1 == 0) {
 		mdx_spi_transfer(&spi, g_data.buffer, NULL, len);
@@ -284,7 +346,7 @@ lcd_flush(void)
 		desc.direction = DMA_MEM_TO_DEV;
 		desc.count = len / 2;
 
-		gd32v_spi_test(&spi, 16);
+		gd32v_spi_setup(&spi, &conf);
 		gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
 	}
 }
@@ -420,15 +482,18 @@ lvgl_draw(char *z)
 	lv_font_glyph_dsc_t g;
 	const uint8_t *map_p;
 	lv_font_t *font_p;
+	bool g_ret;
 	int x;
+	int y;
 	int i;
 
 	font_p = &tahoma_40;
 
-	g_data.ptr = (uint8_t *)g_data.buffer;
-	g_data.ptr += (4 + (4 * LCD_WIDTH)) * LCD_BYTES;
 	x = 4;
-	bool g_ret;
+	y = 4;
+
+	g_data.ptr = (uint8_t *)g_data.buffer;
+	g_data.ptr += (x + (y * LCD_WIDTH)) * LCD_BYTES;
 
 	for (i = 0; i < strlen(z); i++) {
 		g_ret = lv_font_get_glyph_dsc(font_p, &g, z[i], '\0');
@@ -471,6 +536,7 @@ lcd_init(void)
 			mdx_spi_transfer2(&spi, &cmd, NULL, 1);
 		}
 	}
+	lcd_clear();
 	cs_disable();
 }
 
@@ -479,18 +545,20 @@ lcd_update(int val)
 {
 	char text[16];
 
-	sprintf(text, "%d ppm", val);
-
-	if (1 == 1) {
-		cs_enable();
-		lcd_clear();
-		cs_disable();
-
-		lcd_clear_buf();
-		lvgl_draw(text);
-	}
+	sprintf(text, "%d", val);
 
 	cs_enable();
-	lcd_flush();
+	lcd_clear_buf();
+	lvgl_draw(text);
+	lcd_flush(0, 0);
 	cs_disable();
+
+	sprintf(text, "Co2(ppm)", val);
+
+	cs_enable();
+	lcd_clear_buf();
+	lvgl_draw(text);
+	lcd_flush(0, LCD_HEIGHT / 2);
+	cs_disable();
+
 }
