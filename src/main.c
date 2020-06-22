@@ -63,10 +63,8 @@ main(void)
 
 	error = ccs811_init();
 	if (error) {
-		sprintf(text, "ccs811");
-		lcd_update(0, text);
-		sprintf(text, "error");
-		lcd_update(1, text);
+		lcd_update(0, "ccs811");
+		lcd_update(1, "error");
 		panic("could not initialize CCS811\n");
 	}
 

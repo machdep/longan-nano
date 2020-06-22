@@ -45,7 +45,8 @@ static struct mdx_device rcu;
 static struct mdx_device gpioa;
 struct mdx_device gpiob;
 static struct mdx_device gpioc;
-static struct mdx_device usart;
+static struct mdx_device usart0;
+static struct mdx_device usart1;
 static struct mdx_device timer0;
 static struct mdx_device clic;
 struct mdx_device dma;
@@ -75,12 +76,15 @@ board_init(void)
 	gd32v_gpio_init(&gpiob, BASE_GPIOB);
 	gd32v_gpio_init(&gpioc, BASE_GPIOC);
 
-	gd32v_usart_init(&usart, BASE_USART0, 8000000);
+	gd32v_usart_init(&usart0, BASE_USART0, 8000000);
+	gd32v_usart_init(&usart1, BASE_USART1, 8000000);
 
-	mdx_uart_setup(&usart, 115200, UART_DATABITS_8,
+	mdx_uart_setup(&usart0, 115200, UART_DATABITS_8,
+	    UART_STOPBITS_1, UART_PARITY_NONE);
+	mdx_uart_setup(&usart1, 9600, UART_DATABITS_8,
 	    UART_STOPBITS_1, UART_PARITY_NONE);
 
-	mdx_console_register_uart(&usart);
+	mdx_console_register_uart(&usart0);
 
 	gd32v_timer_init(&timer0, BASE_TIMER0, 8000000);
 	gd32v_i2c_init(&i2c0, BASE_I2C0);
