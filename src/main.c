@@ -34,6 +34,7 @@
 
 #include <dev/i2c/i2c.h>
 #include <dev/ccs811/ccs811.h>
+#include <dev/mh_z19b/mh_z19b.h>
 
 #include "lcd.h"
 #include "ccs811.h"
