@@ -30,91 +30,58 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/thread.h>
-#include <sys/mbuf.h>
 
-#include <dev/i2c/i2c.h>
-#include <dev/ccs811/ccs811.h>
+#include <dev/mh_z19b/mh_z19b.h>
+#include <dev/uart/uart.h>
 
-#include "lcd.h"
-#include "ccs811.h"
 #include "mh_z19b.h"
 
-extern struct mdx_device i2c0;
+extern struct mdx_device usart1;
 
-/* Override cpu_idle() from machdep.c */
-void
-cpu_idle(void)
+static void
+drain_fifo(void)
 {
+	bool ready;
 
-	/*
-	 * gd32v DMA does not work properly in WFI state,
-	 * so do nothing here.
-	 */
+	for (;;) {
+		ready = mdx_uart_rxready(&usart1);
+		if (!ready)
+			break;
+		mdx_uart_getc(&usart1);
+	}
 }
 
-static int __unused
-ccs811_main(void)
+int
+mh_z19b_init(void)
 {
-	uint16_t eco2;
-	uint16_t tvoc;
-	char text[16];
-	int error;
+	uint8_t reply[9];
+	uint8_t req[9];
 
-	lcd_init();
+	printf("%s\n", __func__);
 
-	error = ccs811_init();
-	if (error) {
-		lcd_update(0, "ccs811");
-		lcd_update(1, "error");
-		panic("could not initialize CCS811\n");
-	}
-
-	sprintf(text, "Co2(ppm)");
-	lcd_update(1, text);
-
-	while (1) {
-		error = ccs811_read_data(&eco2, &tvoc);
-		if (error)
-			panic("%s: error %d\n", __func__, error);
-
-		printf("eCo2 %d tvoc %d\n", eco2, tvoc);
-
-		sprintf(text, "%d", eco2);
-		lcd_update(0, text);
-
-		mdx_usleep(1000000);
-	}
+	drain_fifo();
+	mh_z19b_set_range_req(req, 2000);
+	mh_z19b_cycle(&usart1, req, reply, 2);
 
 	return (0);
 }
 
 int
-main(void)
+mh_z19b_read_data(uint32_t *co2)
 {
-	char text[16];
-	uint32_t co2;
+	uint8_t reply[9];
+	uint8_t req[9];
 	int error;
 
-	lcd_init();
-	mh_z19b_init();
+	drain_fifo();
+	mh_z19b_read_co2_req(req);
+	mh_z19b_cycle(&usart1, req, reply, 9);
 
-	/* Measurement range changed, wait a bit. */
-	mdx_usleep(5000000);
-
-	sprintf(text, "Co2(ppm)");
-	lcd_update(1, text);
-
-	while (1) {
-		error = mh_z19b_read_data(&co2);
-		if (error)
-			panic("%s: error %d\n", __func__, error);
-
-		printf("Co2 %d\n", co2);
-
-		sprintf(text, "%d", co2);
-		lcd_update(0, text);
-
-		mdx_usleep(1000000);
+	error = mh_z19b_read_co2_reply(reply, co2);
+	if (error) {
+		printf("Failed to read CO2 data, error %d\n",
+		    error);
+		return (MDX_ERROR);
 	}
 
 	return (0);

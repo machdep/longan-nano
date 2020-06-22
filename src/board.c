@@ -46,7 +46,7 @@ static struct mdx_device gpioa;
 struct mdx_device gpiob;
 static struct mdx_device gpioc;
 static struct mdx_device usart0;
-static struct mdx_device usart1;
+struct mdx_device usart1;
 static struct mdx_device timer0;
 static struct mdx_device clic;
 struct mdx_device dma;
@@ -68,7 +68,7 @@ board_init(void)
 	gd32v_rcu_init(&rcu, BASE_RCU);
 	gd32v_rcu_setup(&rcu,
 	    AHBEN_DMA0EN,
-	    APB1EN_TIMER1EN | APB1EN_I2C0EN,
+	    APB1EN_TIMER1EN | APB1EN_I2C0EN | APB1EN_USART1EN,
 	    APB2EN_USART0EN | APB2EN_TIMER0EN | APB2EN_PAEN |
 	    APB2EN_PBEN | APB2EN_PCEN | APB2EN_SPI0EN | APB2EN_AFEN);
 
@@ -90,9 +90,26 @@ board_init(void)
 	gd32v_i2c_init(&i2c0, BASE_I2C0);
 	gd32v_dma_init(&dma, BASE_DMA0);
 
+	/* PA9 USART0_TX */
 	mdx_gpio_configure(&gpioa, 0, 9,
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
+
+	/* PA2 USART1_TX: sensor */
+	mdx_gpio_configure(&gpioa, 0, 2,
+	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
+	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
+	/* PA3 USART1_RX: sensor */
+	//mdx_gpio_configure(&gpioa, 0, 3,
+	//    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
+	//    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
+
+	//mdx_gpio_configure(&gpioa, 0, 3,
+	//    MDX_GPIO_INPUT | MDX_GPIO_FLOATING);
+
+	//mdx_gpio_configure(&gpioa, 0, 3,
+	//    MDX_GPIO_INPUT | MDX_GPIO_ALT_FUNC |
+	//    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
 	/* CCS811 */
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_MEDIUM | MDX_GPIO_PUSH_PULL;
