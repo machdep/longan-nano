@@ -57,8 +57,6 @@ mh_z19b_init(void)
 	uint8_t reply[9];
 	uint8_t req[9];
 
-	printf("%s\n", __func__);
-
 	drain_fifo();
 	mh_z19b_set_range_req(req, 2000);
 	mh_z19b_cycle(&usart1, req, reply, 2);
