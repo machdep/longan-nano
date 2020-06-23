@@ -59,13 +59,11 @@ lvgl_letter(uint8_t *buf, lv_font_t *font_p,
 	uint32_t bit_ofs;
 	uint32_t col_bit;
 	uint32_t bpp;
-	//int32_t pos_x, pos_y;
 	int32_t col, row;
 	int32_t width_bit;
 	int32_t row_start, col_start;
 	int32_t row_end, col_end;
 	uint8_t letter_px;
-	//int x, y;
 
 	bpp = g->bpp;
 	if (bpp == 3)
@@ -87,17 +85,6 @@ lvgl_letter(uint8_t *buf, lv_font_t *font_p,
 	default:
 		panic("invalid bpp");
 	}
-
-#if 0
-	x = 0;
-	y = 0;
-
-	pos_x = x + g->ofs_x;
-	pos_y = y + (font_p->line_height - font_p->base_line)
-	    - g->box_h - g->ofs_y;
-
-	dprintf("pos_x %d pos_y %d\n", pos_x, pos_y);
-#endif
 
 	width_bit = g->box_w * bpp; /* Letter width in bits. */
 
@@ -159,8 +146,6 @@ lvgl_draw(uint8_t *buf, char *z)
 	x = 4;
 	y = 4;
 
-	//g_data.ptr = (uint8_t *)g_data.buffer;
-	//g_data.ptr += (x + (y * LCD_WIDTH)) * LCD_BYTES;
 	ptr = buf + (x + (y * LCD_WIDTH)) * LCD_BYTES;
 
 	for (i = 0; i < strlen(z); i++) {
