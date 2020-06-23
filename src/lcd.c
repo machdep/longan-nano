@@ -31,9 +31,9 @@
 #include <dev/gpio/gpio.h>
 #include <dev/st7789v/st7789v.h>
 
+#include "../fonts/draw.h"
+
 #include "lcd.h"
-#include <lib/lvgl/src/lv_font/lv_font.h>
-#include <lib/lvgl/src/lv_font/lv_font_fmt_txt.h>
 
 #include <arch/riscv/gigadevice/gd32v_spi.h>
 #include <arch/riscv/gigadevice/gd32v_dma.h>
@@ -41,11 +41,8 @@
 extern struct mdx_device spi;
 extern struct mdx_device gpiob;
 extern struct mdx_device dma;
-extern lv_font_t tahoma_40;
 
 #define	dprintf(fmt, ...)
-
-#define	LCD_BYTES	2
 
 #define	SPI0_DATA	(0x40013000 + 0x0C)
 #define	SPI0_CHAN	2
@@ -71,10 +68,7 @@ static const uint8_t init_seq[] = {
 	0xff
 };
 
-static struct global_data {
-	uint8_t buffer[LCD_WIDTH * LCD_HEIGHT * LCD_BYTES / 2];
-	uint8_t *ptr;
-} g_data __aligned(16);
+static uint8_t buffer[LCD_WIDTH * LCD_HEIGHT * LCD_BYTES / 2] __aligned(16);
 
 static int
 transfer_dma(mdx_device_t dev, uint8_t *out,
@@ -176,24 +170,11 @@ lcd_set_addr(int xs, int ys, int xe, int ye)
 }
 
 static void
-draw_pixel(lv_font_glyph_dsc_t *g, int y, int x, int pixel)
-{
-	uint16_t *buf;
-
-	buf = g_data.ptr;
-
-	if (pixel)
-		buf[(x + y * LCD_WIDTH)] = 0;
-	else
-		buf[(x + y * LCD_WIDTH)] = 0x4f4f;
-}
-
-static void
 lcd_clear(void)
 {
 	struct gd32v_spi_config conf;
 	struct dma_desc desc;
-	uint16_t data;
+	uint32_t data;
 	int len;
 
 	data = 0x4f4f;
@@ -202,7 +183,7 @@ lcd_clear(void)
 
 	len = LCD_WIDTH * LCD_HEIGHT * LCD_BYTES;
 
-	desc.src_addr = &data;
+	desc.src_addr = (uintptr_t)&data;
 	desc.dst_addr = SPI0_DATA;
 	desc.src_inc = 0;
 	desc.dst_inc = 0;
@@ -231,7 +212,7 @@ lcd_clear_buf(void)
 	len = (LCD_WIDTH * LCD_HEIGHT * LCD_BYTES) / 2;
 
 	for (i = 0; i < len; i += 1)
-		g_data.buffer[i] = 0x4f;
+		buffer[i] = 0x4f;
 }
 
 static void
@@ -252,7 +233,7 @@ lcd_flush(int x, int y)
 	conf.dma_tx = true;
 	conf.dma_rx = false;
 
-	desc.src_addr = (uint32_t)g_data.buffer;
+	desc.src_addr = (uint32_t)buffer;
 	desc.dst_addr = SPI0_DATA;
 	desc.src_inc = 1;
 	desc.dst_inc = 0;
@@ -263,134 +244,6 @@ lcd_flush(int x, int y)
 
 	gd32v_spi_setup(&spi, &conf);
 	gd32v_dma_setup(&dma, SPI0_CHAN, &desc);
-}
-
-static void
-lvgl_letter(lv_font_t *font_p, lv_font_glyph_dsc_t *g, const uint8_t *map_p)
-{
-	uint32_t bitmask_init;
-	uint32_t bitmask;
-	uint32_t col_bit_max;
-	uint32_t col_bit_row_ofs;
-	uint32_t bit_ofs;
-	uint32_t col_bit;
-	uint32_t bpp;
-	int32_t pos_x, pos_y;
-	int32_t col, row;
-	int32_t width_bit;
-	int32_t row_start, col_start;
-	int32_t row_end, col_end;
-	uint8_t letter_px;
-	int x, y;
-
-	bpp = g->bpp;
-	if (bpp == 3)
-		bpp = 4;
-
-	switch(bpp) {
-	case 1:
-		bitmask_init = 0x80;
-		break;
-	case 2:
-		bitmask_init = 0xC0;
-		break;
-	case 4:
-		bitmask_init = 0xF0;
-		break;
-	case 8:
-		bitmask_init = 0xFF;
-		break;
-	default:
-		panic("invalid bpp");
-	}
-
-	x = 0;
-	y = 0;
-
-	pos_x = x + g->ofs_x;
-	pos_y = y + (font_p->line_height - font_p->base_line)
-	    - g->box_h - g->ofs_y;
-
-	dprintf("pos_x %d pos_y %d\n", pos_x, pos_y);
-
-	width_bit = g->box_w * bpp; /* Letter width in bits. */
-
-	/* Calculate the col/row start/end on the map. */
-	col_start = 0;
-	row_start = 0;
-	col_end = g->box_w;
-	row_end = g->box_h;
-
-	/* Move on the map too. */
-	bit_ofs = (row_start * width_bit) + (col_start * bpp);
-	map_p += bit_ofs >> 3;
-
-	dprintf("row_end %d col_end %d\n", row_end, col_end);
-
-	col_bit = bit_ofs & 0x7;
-	col_bit_max = 8 - bpp;
-	col_bit_row_ofs = (g->box_w + col_start - col_end) * bpp;
-
-	for (row = row_start ; row < row_end; row++) {
-		bitmask = bitmask_init >> col_bit;
-
-		for (col = col_start; col < col_end; col++) {
-			letter_px = (*map_p & bitmask) >>
-			    (col_bit_max - col_bit);
-			draw_pixel(g, row, col, letter_px);
-
-			/* Go to the next column. */
-			if (col_bit < col_bit_max) {
-				col_bit += bpp;
-				bitmask = bitmask >> bpp;
-			} else {
-				col_bit = 0;
-				bitmask = bitmask_init;
-				map_p++;
-			}
-		}
-
-		col_bit += col_bit_row_ofs;
-		map_p += (col_bit >> 3);
-		col_bit = col_bit & 0x7;
-	}
-}
-
-static void
-lvgl_draw(char *z)
-{
-	lv_font_glyph_dsc_t g;
-	const uint8_t *map_p;
-	lv_font_t *font_p;
-	bool g_ret;
-	int x;
-	int y;
-	int i;
-
-	font_p = &tahoma_40;
-
-	x = 4;
-	y = 4;
-
-	g_data.ptr = (uint8_t *)g_data.buffer;
-	g_data.ptr += (x + (y * LCD_WIDTH)) * LCD_BYTES;
-
-	for (i = 0; i < strlen(z); i++) {
-		g_ret = lv_font_get_glyph_dsc(font_p, &g, z[i], '\0');
-		if (g_ret == false)
-			panic("error");
-
-		dprintf("g.box_h %d %d\n", g.box_h, g.box_w);
-
-		map_p = lv_font_get_glyph_bitmap(font_p, z[i]);
-		if (map_p == NULL)
-			panic("error 1");
-
-		lvgl_letter(font_p, &g, map_p);
-
-		x += g.box_w;
-		g_data.ptr += g.box_w * LCD_BYTES;
-	}
 }
 
 void
@@ -427,7 +280,7 @@ lcd_update(int line, char *text)
 	cs_enable();
 
 	lcd_clear_buf();
-	lvgl_draw(text);
+	lvgl_draw(buffer, text);
 
 	if (line == 0)
 		lcd_flush(0, 0);
