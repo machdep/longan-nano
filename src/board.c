@@ -91,63 +91,63 @@ board_init(void)
 	gd32v_dma_init(&dma, BASE_DMA0);
 
 	/* PA9 USART0_TX */
-	mdx_gpio_configure(&gpioa, 0, 9,
+	mdx_gpio_configure(&gpioa, 9,
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
 	/* PA2 USART1_TX: sensor */
-	mdx_gpio_configure(&gpioa, 0, 2,
+	mdx_gpio_configure(&gpioa, 2,
 	    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 	/* PA3 USART1_RX: sensor */
-	//mdx_gpio_configure(&gpioa, 0, 3,
+	//mdx_gpio_configure(&gpioa, 3,
 	//    MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC |
 	//    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
-	//mdx_gpio_configure(&gpioa, 0, 3,
+	//mdx_gpio_configure(&gpioa, 3,
 	//    MDX_GPIO_INPUT | MDX_GPIO_FLOATING);
 
-	//mdx_gpio_configure(&gpioa, 0, 3,
+	//mdx_gpio_configure(&gpioa, 3,
 	//    MDX_GPIO_INPUT | MDX_GPIO_ALT_FUNC |
 	//    MDX_GPIO_SPEED_LOW | MDX_GPIO_PUSH_PULL);
 
 	/* CCS811 */
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_MEDIUM | MDX_GPIO_PUSH_PULL;
-	mdx_gpio_configure(&gpioa, 0, 12, reg); //wak
-	mdx_gpio_configure(&gpioa, 0, 11, reg); //int
-	mdx_gpio_configure(&gpioa, 0, 8, reg); //rst
-	mdx_gpio_configure(&gpiob, 0, 15, reg); //add
+	mdx_gpio_configure(&gpioa, 12, reg); //wak
+	mdx_gpio_configure(&gpioa, 11, reg); //int
+	mdx_gpio_configure(&gpioa, 8, reg); //rst
+	mdx_gpio_configure(&gpiob, 15, reg); //add
 
-	mdx_gpio_set(&gpioa, 0, 12, 0);
-	mdx_gpio_set(&gpioa, 0, 11, 0);
-	mdx_gpio_set(&gpioa, 0, 8, 0);
-	mdx_gpio_set(&gpiob, 0, 15, 0);
+	mdx_gpio_set(&gpioa, 12, 0);
+	mdx_gpio_set(&gpioa, 11, 0);
+	mdx_gpio_set(&gpioa, 8, 0);
+	mdx_gpio_set(&gpiob, 15, 0);
 
 	/* Led */
-	mdx_gpio_configure(&gpioc, 0, 13, reg);
-	mdx_gpio_set(&gpioc, 0, 13, 0);
+	mdx_gpio_configure(&gpioc, 13, reg);
+	mdx_gpio_set(&gpioc, 13, 0);
 
 #if 0
-	mdx_gpio_configure(&gpiob, 0, 6,
+	mdx_gpio_configure(&gpiob, 6,
 	    MDX_GPIO_ALT_FUNC | MDX_GPIO_INPUT | MDX_GPIO_PULL_UP);
-	mdx_gpio_configure(&gpiob, 0, 7,
+	mdx_gpio_configure(&gpiob, 7,
 	    MDX_GPIO_ALT_FUNC | MDX_GPIO_INPUT | MDX_GPIO_PULL_UP);
 #endif
 
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_HIGH;
 	reg |= MDX_GPIO_OPEN_DRAIN | MDX_GPIO_ALT_FUNC;
-	mdx_gpio_configure(&gpiob, 0, CCS811_SCL, reg);
-	mdx_gpio_configure(&gpiob, 0, CCS811_SDA, reg);
+	mdx_gpio_configure(&gpiob, CCS811_SCL, reg);
+	mdx_gpio_configure(&gpiob, CCS811_SDA, reg);
 
 	/* LCD */
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_ALT_FUNC | MDX_GPIO_SPEED_HIGH | MDX_GPIO_PUSH_PULL;
-	mdx_gpio_configure(&gpioa, 0, LCD_MOSI, reg);
-	mdx_gpio_configure(&gpioa, 0, LCD_SCK, reg);
+	mdx_gpio_configure(&gpioa, LCD_MOSI, reg);
+	mdx_gpio_configure(&gpioa, LCD_SCK, reg);
 
 	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_MEDIUM | MDX_GPIO_PUSH_PULL;
-	mdx_gpio_configure(&gpiob, 0, LCD_DC, reg);
-	mdx_gpio_configure(&gpiob, 0, LCD_RST, reg);
-	mdx_gpio_configure(&gpiob, 0, LCD_CS, reg);
+	mdx_gpio_configure(&gpiob, LCD_DC, reg);
+	mdx_gpio_configure(&gpiob, LCD_RST, reg);
+	mdx_gpio_configure(&gpiob, LCD_CS, reg);
 
 	gd32v_spi_init(&spi, BASE_SPI0);
 

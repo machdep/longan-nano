@@ -108,7 +108,7 @@ static void
 lcd_command(void)
 {
 
-	mdx_gpio_set(&gpiob, 0, LCD_DC, 0);
+	mdx_gpio_set(&gpiob, LCD_DC, 0);
 	lcd_delay();
 }
 
@@ -116,7 +116,7 @@ static void
 lcd_data(void)
 {
 
-	mdx_gpio_set(&gpiob, 0, LCD_DC, 1);
+	mdx_gpio_set(&gpiob, LCD_DC, 1);
 	lcd_delay();
 }
 
@@ -124,7 +124,7 @@ static void
 cs_enable(void)
 {
 
-	mdx_gpio_set(&gpiob, 0, LCD_CS, 0);
+	mdx_gpio_set(&gpiob, LCD_CS, 0);
 	lcd_delay();
 }
 
@@ -132,7 +132,7 @@ static void
 cs_disable(void)
 {
 
-	mdx_gpio_set(&gpiob, 0, LCD_CS, 1);
+	mdx_gpio_set(&gpiob, LCD_CS, 1);
 	lcd_delay();
 }
 
@@ -252,7 +252,7 @@ lcd_init(void)
 	const uint8_t *p;
 	uint8_t cmd;
 
-	mdx_gpio_set(&gpiob, 0, LCD_RST, 1);
+	mdx_gpio_set(&gpiob, LCD_RST, 1);
 
 	cs_enable();
 	for (p = init_seq; *p != 0xff; p++) {
