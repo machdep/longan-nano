@@ -25,6 +25,7 @@
  */
 
 #include <sys/cdefs.h>
+#include <sys/systm.h>
 
 #include <lib/lvgl/src/lv_font/lv_font.h>
 #include <lib/lvgl/src/lv_font/lv_font_fmt_txt.h>
