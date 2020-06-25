@@ -22,7 +22,7 @@ Connect your MH-Z19B Co2 sensor as this:
 | Vin     | 5V          |
 | GND     | GND         | 
 
-### Build project
+## Build project
     $ git clone --recursive https://github.com/machdep/longan-nano
     $ cd longan-nano
     $ export CROSS_COMPILE=/opt/riscv/bin/riscv32-unknown-elf-
@@ -35,16 +35,17 @@ Connect your MH-Z19B Co2 sensor as this:
     $ ./configure
     $ make
 
-## Program the chip using OpenOCD
+#### Program the chip using OpenOCD
     $ /path/to/riscv-openocd/src/openocd -f ./sipeed-jtag.cfg -f ./openocd.cfg -c "program obj/longan-nano.elf; exit"
 
 ### Alternatively (without SiPEED debugger), program using DFU
 
 Get [dfu-util](http://dl.sipeed.com/LONGAN/platformio/dl-packages/tool-gd32vflash-v0.1.0-linux.tar.gz).
 
-Boot yout longan-nano in DFU bootloader. For this keep boot0 button pressed, and then press and release the reset button.
+Boot your longan-nano in DFU bootloader mode. For this keep boot0 button pressed and then press and release the reset button.
 
 In a DFU mode run this command:
+
     $ sudo ./dfu-util -a 0 -s 0x08000000:leave -D obj/longan-nano.bin
 
 Press the reset button on the longan nano after programming.
