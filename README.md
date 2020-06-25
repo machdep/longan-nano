@@ -50,4 +50,6 @@ In a DFU mode run this command:
 
 Press the reset button on the longan nano after programming.
 
+Note that programming using sipeed debugger is 1-2 seconds faster compare to dfu-util.
+
 ![alt text](https://raw.githubusercontent.com/machdep/longan-nano/master/images/longan-nano.jpg)
