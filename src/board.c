@@ -84,7 +84,9 @@ board_init(void)
 	mdx_uart_setup(&usart1, 9600, UART_DATABITS_8,
 	    UART_STOPBITS_1, UART_PARITY_NONE);
 
+#ifdef MDX_SYSTM_CONSOLE
 	mdx_console_register_uart(&usart0);
+#endif
 
 	gd32v_timer_init(&timer0, BASE_TIMER0, 8000000);
 	gd32v_i2c_init(&i2c0, BASE_I2C0);
@@ -126,6 +128,11 @@ board_init(void)
 	/* Led */
 	mdx_gpio_configure(&gpioc, 13, reg);
 	mdx_gpio_set(&gpioc, 13, 0);
+
+	/* Buzzer */
+	reg = MDX_GPIO_OUTPUT | MDX_GPIO_SPEED_HIGH | MDX_GPIO_PUSH_PULL;
+	mdx_gpio_configure(&gpiob, 4, reg);
+	mdx_gpio_set(&gpiob, 4, 1);
 
 #if 0
 	mdx_gpio_configure(&gpiob, 6,
