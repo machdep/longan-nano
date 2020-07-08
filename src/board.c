@@ -168,10 +168,11 @@ board_init(void)
 	mdx_intc_enable(&clic, 46);
 
 	mdx_intc_setup(&clic, 50, gd32v_i2c_event_intr, &i2c0);
-	mdx_intc_enable(&clic, 50);
-
 	mdx_intc_setup(&clic, 51, gd32v_i2c_error_intr, &i2c0);
+#if 0
+	mdx_intc_enable(&clic, 50);
 	mdx_intc_enable(&clic, 51);
+#endif
 
 	printf("mdepx initialized\n");
 	gd32v_rcu_dump(&rcu);
