@@ -98,6 +98,11 @@ main(void)
 	lcd_init();
 	mh_z19b_init();
 
+	sprintf(text, "wait");
+	lcd_update(0, text);
+	sprintf(text, "sensor");
+	lcd_update(1, text);
+
 	/* Measurement range changed, wait a bit. */
 	mdx_usleep(5000000);
 
