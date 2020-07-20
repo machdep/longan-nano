@@ -111,8 +111,11 @@ main(void)
 
 	while (1) {
 		error = mh_z19b_read_data(&co2);
-		if (error)
+		if (error) {
+			lcd_update(0, "panic");
+			lcd_update(1, "err 1");
 			panic("%s: error %d\n", __func__, error);
+		}
 
 		printf("Co2 %d\n", co2);
 
