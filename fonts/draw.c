@@ -152,7 +152,7 @@ lvgl_draw(uint8_t *buf, char *z)
 	for (i = 0; i < strlen(z); i++) {
 		g_ret = lv_font_get_glyph_dsc(font_p, &g, z[i], '\0');
 		if (g_ret == false)
-			panic("error");
+			panic("%s: error", __func__);
 
 		dprintf("g.box_h %d %d\n", g.box_h, g.box_w);
 
