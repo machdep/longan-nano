@@ -93,7 +93,9 @@ main(void)
 {
 	char text[16];
 	uint32_t co2;
+	int iteration;
 	int error;
+	int i;
 
 	lcd_init();
 	mh_z19b_init();
@@ -109,19 +111,29 @@ main(void)
 	sprintf(text, "Co2(ppm)");
 	lcd_update(1, text);
 
+	iteration = 0;
+
 	while (1) {
-		error = mh_z19b_read_data(&co2);
-		if (error) {
-			lcd_update(0, "panic");
-			lcd_update(1, "err 1");
-			panic("%s: error %d\n", __func__, error);
-		}
 
-		printf("Co2 %d\n", co2);
+		i = iteration % 5;
 
-		sprintf(text, "%d", co2);
-		lcd_update(0, text);
+		if (i == 0) {
+			error = mh_z19b_read_data(&co2);
+			if (error) {
+				lcd_update(0, "panic");
+				lcd_update(1, "err 1");
+				panic("%s: error %d\n", __func__, error);
+			}
+			printf("Co2 %d\n", co2);
+			sprintf(text, "%d", co2);
+			lcd_update(0, text);
 
+			sprintf(text, "Co2(ppm)");
+		} else
+			snprintf(text, i+1, "tick");
+		lcd_update(1, text);
+
+		iteration++;
 		mdx_usleep(1000000);
 	}
 
